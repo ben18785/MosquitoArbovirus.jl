@@ -200,7 +200,16 @@ function simulate_virus_in_hemolymph_implicit(tspan, initial_conditions,
       h = A \ b
       H[i + 1, :] = h
   end
-  H
+
+  # create an array of interpolation functions: one for each x
+  H_dims = size(H)
+  nx = H_dims[2]
+  ts1 = Vector(0.0:delta_t:tspan[2])
+  fvec = [LinearInterpolation(ts1, H[:, i]) for i in 1:nx]
+  function h_sol(t)
+     [fvec[i](t) for i in 1:nx]
+  end
+  h_sol
 end
 
 function simulate_virus_in_hemolymph(tspan, initial_conditions,
@@ -297,29 +306,27 @@ function simulate_porosity(simulation_time_parameters,
         virus_hemolymph_parameters, m_solution,
         spatial_domain_parameters, barrier_func)
 
-    # s_solution = simulate_virus_in_salivary_glands(tspan,
-    #         initial_conditions,
-    #         virus_salivary_glands_parameters,
-    #         h_solution,
-    #         virus_hemolymph_parameters,
-    #         spatial_domain_parameters)
-    #
-    # # calculate totals in midgut and hemolymph
-    # ts = simulation_time_parameters.ts
-    #
-    # x_range = spatial_domain_parameters.x_range
-    # total_midgut = map(t -> total_virus_in_tissue(t, m_solution, x_range), ts)
-    #
-    # y_range = spatial_domain_parameters.y_range
-    # total_hemolymph = map(t -> total_virus_in_tissue(t, h_solution, y_range), ts)
+    s_solution = simulate_virus_in_salivary_glands(tspan,
+            initial_conditions,
+            virus_salivary_glands_parameters,
+            h_solution,
+            virus_hemolymph_parameters,
+            spatial_domain_parameters)
 
-    # (virus_lumen=l_solution, virus_midgut=m_solution,
-    #  virus_hemolymph=h_solution, virus_salivary_glands=s_solution,
-    #  total_midgut=total_midgut, total_hemolymph=total_hemolymph,
-    #  lumen_volume=volume_solution,
-    #  barrier_func=barrier_func)
+    # calculate totals in midgut and hemolymph
+    ts = simulation_time_parameters.ts
+
+    x_range = spatial_domain_parameters.x_range
+    total_midgut = map(t -> total_virus_in_tissue(t, m_solution, x_range), ts)
+
+    y_range = spatial_domain_parameters.y_range
+    total_hemolymph = map(t -> total_virus_in_tissue(t, h_solution, y_range), ts)
+
     (virus_lumen=l_solution, virus_midgut=m_solution,
-     virus_hemolymph=h_solution)
+     virus_hemolymph=h_solution, virus_salivary_glands=s_solution,
+     total_midgut=total_midgut, total_hemolymph=total_hemolymph,
+     lumen_volume=volume_solution,
+     barrier_func=barrier_func)
 end
 
 function dataframe_aggregates(simulation_time_parameters, system_solution)
