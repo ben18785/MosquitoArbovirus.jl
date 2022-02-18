@@ -1,9 +1,26 @@
 module parameter_structs
 
-Base.@kwdef mutable struct SimulationTimeParameters
+Base.@kwdef mutable struct SimulationParameters
     time_min::Float64
     time_max::Float64
-    time_delta::Float64
+    time_delta::Float64 # time step for aggregating midgut and hemolymph for summaries
+
+    # spatial domain characteristics
+    delta_x::Float64
+    x_max::Float64
+    delta_y::Float64
+    y_max::Float64
+
+    # these parameters are to do with solving PDE implicitly
+    time_delta_pde::Float64 # time-step for pde
+    theta::Float64
+    solver_type::String
+
+    x_range = 0:delta_x:x_max
+    y_range = 0:delta_y:y_max
+
+    # determine y index closest to y=1
+    y_boundary_index = argmin(map(y -> abs(y - 1.0), y_range))
 
     tspan = (time_min, time_max) # for ODE solutions
     ts = time_min:time_delta:time_max
@@ -42,24 +59,6 @@ Base.@kwdef struct InitialConditions
     virus_hemolymph::Array{Float64}
     virus_salivary_glands::Float64
     volume::Float64
-end
-
-Base.@kwdef mutable struct SpatialDomainParameters
-    delta_x::Float64
-    x_max::Float64
-    delta_y::Float64
-    y_max::Float64
-
-    # these parameters are to do with solving PDE implicitly
-    time_delta::Float64
-    theta::Float64
-    solver_type::String
-
-    x_range = 0:delta_x:x_max
-    y_range = 0:delta_y:y_max
-
-    # determine y index closest to y=1
-    y_boundary_index = argmin(map(y -> abs(y - 1.0), y_range))
 end
 
 Base.@kwdef struct RefeedingParameters

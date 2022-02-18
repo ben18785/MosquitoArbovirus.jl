@@ -87,6 +87,12 @@ function second_derivative(delta_x, x_max, bc_rhs="neumann")
     A
 end
 
+"""
+Calculates the ``A`` matrix in the ``Ax=b`` linear system that approximates
+the Fisher equation. Specifically, we use the theta rule described here:
+http://hplgit.github.io/num-methods-for-PDEs/doc/pub/diffu/html/._diffu001.html
+assuming a logistic term that uses the previous time step hemolymph quantity.
+"""
 function implicit_A(delta_x, x_max, delta_t, D, theta)
     x = 0:delta_x:x_max
     N = length(x)
@@ -116,6 +122,16 @@ function implicit_A(delta_x, x_max, delta_t, D, theta)
     A
 end
 
+"""
+Calculates the ``C`` matrix in the ``Ax=b`` linear system that approximates
+the Fisher equation. Specifically, we use the theta rule described here:
+http://hplgit.github.io/num-methods-for-PDEs/doc/pub/diffu/html/._diffu001.html
+assuming a logistic term that uses the previous time step hemolymph quantity.
+
+Here ``b = C * h + d``, where ``h`` is a vector of hemolymph quantities across
+the spatial domain from the previous time step and ``d`` is calculated in the
+`implicit_d` function.
+"""
 function implicit_C(delta_x, x_max, delta_t, D, theta)
     x = 0:delta_x:x_max
     N = length(x)
@@ -145,6 +161,16 @@ function implicit_C(delta_x, x_max, delta_t, D, theta)
     C
 end
 
+"""
+Calculates the ``d`` vector in the ``Ax=b`` linear system that approximates
+the Fisher equation. Specifically, we use the theta rule described here:
+http://hplgit.github.io/num-methods-for-PDEs/doc/pub/diffu/html/._diffu001.html
+assuming a logistic term that uses the previous time step hemolymph quantity.
+
+Here ``b = C * h + d``, where ``h`` is a vector of hemolymph quantities across
+the spatial domain from the previous time step and ``C`` is calculated in the
+`implicit_dC function.
+"""
 function implicit_d(h, delta_x, x_max, delta_t, D, theta, virus_growth_rate,
     flux_from_midgut)
 

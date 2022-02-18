@@ -33,9 +33,10 @@ function midgut_initial_rate(virus_lumen_solution, lumen_parameters)
     t -> kmax * l(t)^2 / (a^2 + l(t)^2)
 end
 
-function simulate_virus_in_lumen(tspan, initial_conditions, virus_lumen_parameters,
-                                 refeeding_parameters)
+function simulate_virus_in_lumen(simulation_parameters, initial_conditions,
+    virus_lumen_parameters, refeeding_parameters)
     time_refeed = refeeding_parameters.time_refeed
+    tspan = simulation_parameters.tspan
     time_end = tspan[2]
     time_diff = time_end - time_refeed
     l0 = initial_conditions.virus_lumen
