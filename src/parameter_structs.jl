@@ -50,6 +50,11 @@ Base.@kwdef mutable struct SpatialDomainParameters
     delta_y::Float64
     y_max::Float64
 
+    # these parameters are to do with solving PDE implicitly
+    time_delta::Float64
+    theta::Float64
+    solver_type::String
+
     x_range = 0:delta_x:x_max
     y_range = 0:delta_y:y_max
 

@@ -8,6 +8,7 @@ using .finite_differences
 using Interpolations
 using QuadGK
 using DataFrames
+using LinearAlgebra
 
 """
 Computes a time-varying function specifying the point in the x plane where the
@@ -126,7 +127,18 @@ function dhdt(h, p, t)
     dhdt
 end
 
-function simulate_virus_in_hemolymph(tspan, initial_conditions,
+# implements theta rule from: http://hplgit.github.io/num-methods-for-PDEs/doc/pub/diffu/html/._diffu001.html
+function solve_theta_rule(tspan, initial_conditions,
+                          virus_hemolymph_parameters,
+                          virus_midgut_solution,
+                          spatial_domain_parameters,
+                          barrier_func)
+
+
+
+end
+
+function simulate_virus_in_hemolymph_mol(tspan, initial_conditions,
                                   virus_hemolymph_parameters,
                                   virus_midgut_solution,
                                   spatial_domain_parameters,
@@ -147,6 +159,70 @@ function simulate_virus_in_hemolymph(tspan, initial_conditions,
     params = [laplacian_matrix, virus_hemolymph_parameters,
               bl_rate_func, spatial_domain_parameters]
     h_sol = solve_ode_generic(tspan, h0, dhdt, params)
+    h_sol
+end
+
+function simulate_virus_in_hemolymph_implicit(tspan, initial_conditions,
+                                  virus_hemolymph_parameters,
+                                  virus_midgut_solution,
+                                  spatial_domain_parameters,
+                                  barrier_func)
+  # rate at which virus leaves midgut, which determines flux at x=0
+  x_range = spatial_domain_parameters.x_range
+  function bl_rate_func(t)
+      total_virus_leaving_midgut(t, virus_midgut_solution, x_range,
+                                 barrier_func)
+  end
+
+  # solve discretised spatial PDE implicitly
+  h0 = initial_conditions.virus_hemolymph
+  delta_y = spatial_domain_parameters.delta_y
+  y_max = spatial_domain_parameters.y_max
+  delta_t = spatial_domain_parameters.time_delta
+  theta = spatial_domain_parameters.theta
+  viral_growth_rate = virus_hemolymph_parameters.virus_replication_rate
+  D = virus_hemolymph_parameters.diffusion_rate
+
+  A = implicit_A(delta_y, y_max, delta_t, D, theta)
+  C = implicit_C(delta_y, y_max, delta_t, D, theta)
+
+  # solve system
+  N = length(h0)
+  ts = delta_t:delta_t:tspan[2]
+  nt = length(ts)
+  H = zeros(nt + 1, N)
+  h = h0
+  H[1, :] = h
+  for i in 1:nt
+      flux = bl_rate_func(ts[i])
+      d = implicit_d(h, delta_y, y_max, delta_t, D, theta, viral_growth_rate, flux)
+      b = C * h + d
+      h = A \ b
+      H[i + 1, :] = h
+  end
+  H
+end
+
+function simulate_virus_in_hemolymph(tspan, initial_conditions,
+                                  virus_hemolymph_parameters,
+                                  virus_midgut_solution,
+                                  spatial_domain_parameters,
+                                  barrier_func)
+
+    solver_type = spatial_domain_parameters.solver_type
+    if solver_type == "mol"
+        h_sol = simulate_virus_in_hemolymph_mol(tspan, initial_conditions,
+                                          virus_hemolymph_parameters,
+                                          virus_midgut_solution,
+                                          spatial_domain_parameters,
+                                          barrier_func)
+    elseif solver_type == "implicit"
+        h_sol = simulate_virus_in_hemolymph_implicit(tspan, initial_conditions,
+                                          virus_hemolymph_parameters,
+                                          virus_midgut_solution,
+                                          spatial_domain_parameters,
+                                          barrier_func)
+    end
     h_sol
 end
 
@@ -221,27 +297,29 @@ function simulate_porosity(simulation_time_parameters,
         virus_hemolymph_parameters, m_solution,
         spatial_domain_parameters, barrier_func)
 
-    s_solution = simulate_virus_in_salivary_glands(tspan,
-            initial_conditions,
-            virus_salivary_glands_parameters,
-            h_solution,
-            virus_hemolymph_parameters,
-            spatial_domain_parameters)
+    # s_solution = simulate_virus_in_salivary_glands(tspan,
+    #         initial_conditions,
+    #         virus_salivary_glands_parameters,
+    #         h_solution,
+    #         virus_hemolymph_parameters,
+    #         spatial_domain_parameters)
+    #
+    # # calculate totals in midgut and hemolymph
+    # ts = simulation_time_parameters.ts
+    #
+    # x_range = spatial_domain_parameters.x_range
+    # total_midgut = map(t -> total_virus_in_tissue(t, m_solution, x_range), ts)
+    #
+    # y_range = spatial_domain_parameters.y_range
+    # total_hemolymph = map(t -> total_virus_in_tissue(t, h_solution, y_range), ts)
 
-    # calculate totals in midgut and hemolymph
-    ts = simulation_time_parameters.ts
-
-    x_range = spatial_domain_parameters.x_range
-    total_midgut = map(t -> total_virus_in_tissue(t, m_solution, x_range), ts)
-
-    y_range = spatial_domain_parameters.y_range
-    total_hemolymph = map(t -> total_virus_in_tissue(t, h_solution, y_range), ts)
-
+    # (virus_lumen=l_solution, virus_midgut=m_solution,
+    #  virus_hemolymph=h_solution, virus_salivary_glands=s_solution,
+    #  total_midgut=total_midgut, total_hemolymph=total_hemolymph,
+    #  lumen_volume=volume_solution,
+    #  barrier_func=barrier_func)
     (virus_lumen=l_solution, virus_midgut=m_solution,
-     virus_hemolymph=h_solution, virus_salivary_glands=s_solution,
-     total_midgut=total_midgut, total_hemolymph=total_hemolymph,
-     lumen_volume=volume_solution,
-     barrier_func=barrier_func)
+     virus_hemolymph=h_solution)
 end
 
 function dataframe_aggregates(simulation_time_parameters, system_solution)

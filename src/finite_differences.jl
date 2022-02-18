@@ -1,5 +1,6 @@
 module finite_differences
-export second_derivative
+export second_derivative, implicit_A, implicit_C, implicit_d
+
 
 """
 Construct the finite difference form of the second spatial derivative with
@@ -84,6 +85,77 @@ function second_derivative(delta_x, x_max, bc_rhs="neumann")
 
     A = A / (delta_x^2);
     A
+end
+
+function implicit_A(delta_x, x_max, delta_t, D, theta)
+    x = 0:delta_x:x_max
+    N = length(x)
+    A = zeros(N, N)
+
+    F = D * delta_t / (delta_x^ 2)
+    Ftheta = F * theta
+    F_1_minus_theta = F * (1 - theta)
+
+    for i in 1:N
+        for j in 1:N
+            if i == j
+                A[i, j] = 1 + 2 * Ftheta
+            end
+            if abs(i - j) == 1
+                A[i, j] = - Ftheta
+            end
+        end
+    end
+
+    # bcs x = 0
+    A[1, 2] = -2 * Ftheta
+
+    # bcs x = 2
+    A[N, N - 1] = -2 * Ftheta
+
+    A
+end
+
+function implicit_C(delta_x, x_max, delta_t, D, theta)
+    x = 0:delta_x:x_max
+    N = length(x)
+    C = zeros(N, N)
+
+    F = D * delta_t / (delta_x^ 2)
+    Ftheta = F * theta
+    F_1_minus_theta = F * (1 - theta)
+
+    for i in 1:N
+        for j in 1:N
+            if i == j
+                C[i, j] = 1 - 2 * Ftheta
+            end
+            if abs(i - j) == 1
+                C[i, j] = F_1_minus_theta
+            end
+        end
+    end
+
+    # bcs x = 0
+    C[1, 2] = 2 * F_1_minus_theta
+
+    # bcs x = 1
+    C[N, N - 1] = 2 * F_1_minus_theta
+
+    C
+end
+
+function implicit_d(h, delta_x, x_max, delta_t, D, theta, virus_growth_rate,
+    flux_from_midgut)
+
+    N = length(h)
+    d = delta_t * virus_growth_rate * h .* (1.0 .- h)
+
+    # bcs x = 0
+    F = D * delta_t / (delta_x^ 2)
+    d[1] = F * delta_x * flux_from_midgut / D
+
+    d
 end
 
 end
