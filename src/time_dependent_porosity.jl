@@ -105,11 +105,12 @@ function total_virus_in_tissue(t, virus_tissue_solution, xrange)
 end
 
 function total_virus_leaving_midgut(t, virus_midgut_solution, xrange,
-                                    barrier_func)
+                                    barrier_func, virus_midgut_parameters)
     m = virus_midgut_solution(t)
     f = LinearInterpolation(xrange, m)
     x_lower = barrier_func(t)
-    quadgk(f, x_lower, 1)[1]
+    gamma = virus_midgut_parameters.gamma
+    quadgk(f, x_lower, 1)[1] * gamma
 end
 
 function dhdt(h, p, t)
@@ -135,6 +136,7 @@ This works for some parameter sets but for others it had instability.
 """
 function simulate_virus_in_hemolymph_mol(simulation_parameters, initial_conditions,
                                   virus_hemolymph_parameters,
+                                  virus_midgut_parameters,
                                   virus_midgut_solution,
                                   barrier_func)
 
@@ -142,7 +144,7 @@ function simulate_virus_in_hemolymph_mol(simulation_parameters, initial_conditio
     x_range = simulation_parameters.x_range
     function bl_rate_func(t)
         total_virus_leaving_midgut(t, virus_midgut_solution, x_range,
-                                   barrier_func)
+                                   barrier_func, virus_midgut_parameters)
     end
 
     # solve discretised spatial PDE
@@ -166,13 +168,14 @@ time step hemolymph quantities.
 """
 function simulate_virus_in_hemolymph_implicit(simulation_parameters, initial_conditions,
                                   virus_hemolymph_parameters,
+                                  virus_midgut_parameters,
                                   virus_midgut_solution,
                                   barrier_func)
   # rate at which virus leaves midgut, which determines flux at x=0
   x_range = simulation_parameters.x_range
   function bl_rate_func(t)
       total_virus_leaving_midgut(t, virus_midgut_solution, x_range,
-                                 barrier_func)
+                                 barrier_func, virus_midgut_parameters)
   end
 
   # solve discretised spatial PDE implicitly
@@ -216,17 +219,19 @@ end
 
 function simulate_virus_in_hemolymph(simulation_parameters, initial_conditions,
                                      virus_hemolymph_parameters,
+                                     virus_midgut_parameters,
                                      virus_midgut_solution,
                                      barrier_func)
 
     solver_type = simulation_parameters.solver_type
     if solver_type == "mol"
         h_sol = simulate_virus_in_hemolymph_mol(simulation_parameters, initial_conditions,
-            virus_hemolymph_parameters, virus_midgut_solution,
+            virus_hemolymph_parameters, virus_midgut_parameters, virus_midgut_solution,
             barrier_func)
     elseif solver_type == "implicit"
         h_sol = simulate_virus_in_hemolymph_implicit(simulation_parameters,
             initial_conditions, virus_hemolymph_parameters,
+            virus_midgut_parameters,
             virus_midgut_solution, barrier_func)
     end
     h_sol
@@ -297,7 +302,7 @@ function simulate(simulation_parameters,
         mechanical_parameters, l_solution, volume_solution, barrier_func)
 
     h_solution = simulate_virus_in_hemolymph(simulation_parameters, initial_conditions,
-        virus_hemolymph_parameters, m_solution,
+        virus_hemolymph_parameters, virus_midgut_parameters, m_solution,
         barrier_func)
 
     s_solution = simulate_virus_in_salivary_glands(simulation_parameters,
