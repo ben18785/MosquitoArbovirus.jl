@@ -179,7 +179,7 @@ function implicit_d(h, delta_x, x_max, delta_t, D, theta, virus_growth_rate,
 
     # bcs x = 0
     F = D * delta_t / (delta_x^ 2)
-    d[1] = F * delta_x * flux_from_midgut / D
+    d[1] += F * delta_x * flux_from_midgut / D
 
     d
 end
